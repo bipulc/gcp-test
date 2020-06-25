@@ -31,10 +31,6 @@ def run(project_name, i_file_path, o_file_path, pipeline_args):
                      | "Write DataFrame to Output Datafile" >> beam.io.WriteToText(o_file_path)
         )
 
-    result = pipeline.run()
-    result.wait_until_finish()
-
-
 if __name__ == "__main__":
     logging.getLogger().setLevel(logging.INFO)
 
@@ -59,3 +55,4 @@ if __name__ == "__main__":
 
     run(known_args.project_name, known_args.input_file_path, known_args.output_file_path, pipeline_args )
 
+#python -m read_csv_to_df --project_name data-analytics-bk --input_file_path 'gs://da_batch_pipeline/trans_six_col.csv' --output_file_path 'gs://da_batch_pipeline/dataframe_output.csv' --runner Dataflow --staging_location gs://da_batch_pipeline/stage --temp_location gs://da_batch_pipeline/temp --region europe-west2 --zone=europe-west2-b
