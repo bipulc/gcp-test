@@ -6,19 +6,19 @@ import io
 import logging
 import argparse
 
-def create_dataframe(file_path):
+def create_dataframe(i_file_path):
 
     # Open a channel to read the file from GCS
-    gcs_file = beam.io.filesystems.FileSystems.open(file_path)
+    gcs_file = beam.io.filesystems.FileSystems.open(i_file_path)
 
     # Read it as csv, you can also use csv.reader
     csv_dict = csv.DictReader(io.TextIOWrapper(gcs_file))
 
     # Create the DataFrame
     dataFrame = pd.DataFrame(csv_dict)
-    print(dataFrame.to_string())
+    #print(dataFrame.to_string())
 
-def run(project_name, file_path, pipeline_args):
+def run(project_name, i_file_path, o_file_path, pipeline_args):
 
     pipeline_options = PipelineOptions(
         pipeline_args, streaming=False, save_main_session=True, project=project_name, job_name='csv-to-df'
@@ -26,8 +26,9 @@ def run(project_name, file_path, pipeline_args):
 
     with beam.Pipeline(options=pipeline_options) as pipeline:
 
-        (   pipeline | beam.Create([file_path])
-                     | beam.FlatMap(create_dataframe)
+        (   pipeline | "Read From Input Datafile" >> beam.Create([i_file_path])
+                     | "Create Pandas DataFrame" >> beam.FlatMap(create_dataframe)
+                     | "Write DataFrame to Output Datafile" >> beam.io.WriteToText(o_file_path)
         )
 
     result = pipeline.run()
@@ -45,11 +46,16 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-      "--file_path",
+      "--input_file_path",
       help="GCS Path of the input file "
+    )
+
+    parser.add_argument(
+      "--output_file_path",
+      help="GCS Path of the output file "
     )
 
     known_args, pipeline_args = parser.parse_known_args()
 
-    run(known_args.project_name, known_args.file_path, pipeline_args )
+    run(known_args.project_name, known_args.input_file_path, known_args.output_file_path, pipeline_args )
 
