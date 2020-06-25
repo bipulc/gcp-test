@@ -1,0 +1,55 @@
+import apache_beam as beam
+from apache_beam.options.pipeline_options import PipelineOptions
+import pandas as pd
+import csv
+import io
+import logging
+import argparse
+
+def create_dataframe(file_path):
+
+    # Open a channel to read the file from GCS
+    gcs_file = beam.io.filesystems.FileSystems.open(file_path)
+
+    # Read it as csv, you can also use csv.reader
+    csv_dict = csv.DictReader(io.TextIOWrapper(gcs_file))
+
+    # Create the DataFrame
+    dataFrame = pd.DataFrame(csv_dict)
+    print(dataFrame.to_string())
+
+def run(project_name, file_path, pipeline_args):
+
+    pipeline_options = PipelineOptions(
+        pipeline_args, streaming=False, save_main_session=True, project=project_name, job_name='csv-to-df'
+    )
+
+    with beam.Pipeline(options=pipeline_options) as pipeline:
+
+        (   pipeline | beam.Create([file_path])
+                     | beam.FlatMap(create_dataframe)
+        )
+
+    result = pipeline.run()
+    result.wait_until_finish()
+
+
+if __name__ == "__main__":
+    logging.getLogger().setLevel(logging.INFO)
+
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "--project_name",
+        help="name of GCP project"
+    )
+
+    parser.add_argument(
+      "--file_path",
+      help="GCS Path of the input file "
+    )
+
+    known_args, pipeline_args = parser.parse_known_args()
+
+    run(known_args.project_name, known_args.file_path, pipeline_args )
+
